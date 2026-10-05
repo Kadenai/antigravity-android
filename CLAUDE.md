@@ -11,8 +11,8 @@ O **Antigravity Android** é um frontend nativo Android em **Jetpack Compose (Ma
 ### Arquitetura de Comunicação
 - **Frontend (Android App):** UI moderna de chat, suporte a Markdown, destaque de sintaxe em código, controle de fluxo (envio de prompt, interrupção via SIGINT) e visualizador de saída do terminal.
 - **Camada de Cliente Unificada (`data/client/AgyClient.kt`):** Interface assíncrona que abstrai o motor de execução, suportando:
-  1. **WebSocketBridgeClient:** Conexão remota com o Termux (`ws://127.0.0.1:8765`) ou PC via OkHttp.
-  2. **NativeAgyClient:** Execução nativa standalone via `ProcessBuilder` (em andamento conforme a especificação em `docs/superpowers/specs/2026-10-05-native-standalone-architecture-design.md`).
+  1. **NativeAgyClient:** Execução nativa standalone via `ProcessBuilder` (padrão, sem dependência do Termux).
+  2. **WebSocketBridgeClient:** Conexão remota com o Termux (`ws://127.0.0.1:8765`) ou PC via OkHttp.
 - **Backend / Bridge (`termux-bridge/agy_bridge.py`):** Servidor WebSocket local (`ws://127.0.0.1:8765`) com **zero dependências externas** (apenas biblioteca padrão Python: `asyncio`, `hashlib`, `struct`).
 - **Agente CLI:** Executado no Termux ou nativamente através do comando:
   ```bash
