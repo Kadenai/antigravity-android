@@ -1,5 +1,8 @@
 package com.example.antigravity.data.network
 
+import com.example.antigravity.data.client.AgyClient
+import com.example.antigravity.data.client.BridgeEvent
+import com.example.antigravity.data.client.StreamType
 import com.example.antigravity.data.model.AGYState
 import com.example.antigravity.data.model.BridgeMessage
 import com.example.antigravity.data.model.BridgeStatus
@@ -28,7 +31,7 @@ import java.util.concurrent.TimeUnit
 
 class WebSocketBridgeClient(
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO)
-) {
+) : AgyClient {
     private val client = OkHttpClient.Builder()
         .readTimeout(0, TimeUnit.MILLISECONDS)
         .pingInterval(10, TimeUnit.SECONDS)
@@ -45,10 +48,17 @@ class WebSocketBridgeClient(
     private var isIntentionalDisconnect = false
 
     private val _status = MutableStateFlow(BridgeStatus())
-    val status: StateFlow<BridgeStatus> = _status.asStateFlow()
+    override val status: StateFlow<BridgeStatus> = _status.asStateFlow()
+
+    private val _incomingEvents = MutableSharedFlow<BridgeEvent>(extraBufferCapacity = 64)
+    override val incomingEvents: SharedFlow<BridgeEvent> = _incomingEvents.asSharedFlow()
 
     private val _messages = MutableSharedFlow<BridgeMessage>(extraBufferCapacity = 64)
     val messages: SharedFlow<BridgeMessage> = _messages.asSharedFlow()
+
+    override suspend fun start() {
+        connect(currentUrl)
+    }
 
     fun connect(url: String = currentUrl) {
         currentUrl = url
@@ -95,10 +105,14 @@ class WebSocketBridgeClient(
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                val errorMsg = "Falha na conexão: ${t.localizedMessage ?: "Erro desconhecido"}"
                 _status.value = _status.value.copy(
                     connectionState = ConnectionState.ERROR,
-                    statusMessage = "Falha na conexão: ${t.localizedMessage ?: "Erro desconhecido"}"
+                    statusMessage = errorMsg
                 )
+                scope.launch {
+                    _incomingEvents.emit(BridgeEvent.Error(errorMsg, t))
+                }
                 scheduleReconnect()
             }
         })
@@ -115,16 +129,30 @@ class WebSocketBridgeClient(
                         "interrupted" -> AGYState.INTERRUPTED
                         else -> _status.value.agyState
                     }
+                    val msgText = msg.message ?: _status.value.statusMessage
                     _status.value = _status.value.copy(
                         agyState = agyState,
-                        statusMessage = msg.message ?: _status.value.statusMessage
+                        statusMessage = msgText
                     )
+                    scope.launch {
+                        _incomingEvents.emit(BridgeEvent.Status(agyState, msgText))
+                    }
                 }
                 "turn_complete" -> {
                     _status.value = _status.value.copy(
                         agyState = AGYState.IDLE,
                         statusMessage = "Pronto para próxima mensagem"
                     )
+                    scope.launch {
+                        _incomingEvents.emit(BridgeEvent.TurnComplete)
+                    }
+                }
+                "output" -> {
+                    val streamType = if (msg.stream == "stderr") StreamType.STDERR else StreamType.STDOUT
+                    val chunk = msg.chunk ?: ""
+                    scope.launch {
+                        _incomingEvents.emit(BridgeEvent.Output(streamType, chunk))
+                    }
                 }
             }
             scope.launch {
@@ -132,13 +160,15 @@ class WebSocketBridgeClient(
             }
         } catch (e: Exception) {
             // Se não for JSON estruturado, trata como chunk de output direto
+            val outputEvent = BridgeEvent.Output(StreamType.STDOUT, text)
             scope.launch {
+                _incomingEvents.emit(outputEvent)
                 _messages.emit(BridgeMessage(type = "output", chunk = text))
             }
         }
     }
 
-    fun sendPrompt(prompt: String): Boolean {
+    override suspend fun sendPrompt(prompt: String): Boolean {
         val ws = webSocket ?: return false
         val message = ClientPromptMessage(content = prompt)
         val jsonPayload = json.encodeToString(message)
@@ -150,6 +180,10 @@ class WebSocketBridgeClient(
             )
         }
         return sent
+    }
+
+    override suspend fun interrupt(): Boolean {
+        return sendInterrupt()
     }
 
     fun sendInterrupt(): Boolean {
@@ -165,6 +199,10 @@ class WebSocketBridgeClient(
         return sent
     }
 
+    override suspend fun stop() {
+        disconnect()
+    }
+
     fun disconnect() {
         isIntentionalDisconnect = true
         reconnectJob?.cancel()
@@ -174,6 +212,11 @@ class WebSocketBridgeClient(
             connectionState = ConnectionState.DISCONNECTED,
             statusMessage = "Desconectado pelo usuário"
         )
+    }
+
+    fun updateServerUrl(newUrl: String) {
+        disconnect()
+        connect(newUrl)
     }
 
     private fun scheduleReconnect() {

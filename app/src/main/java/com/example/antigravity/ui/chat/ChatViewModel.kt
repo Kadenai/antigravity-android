@@ -2,6 +2,8 @@ package com.example.antigravity.ui.chat
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.antigravity.data.client.AgyClient
+import com.example.antigravity.data.client.BridgeEvent
 import com.example.antigravity.data.model.AGYState
 import com.example.antigravity.data.model.BridgeStatus
 import com.example.antigravity.data.model.ChatMessage
@@ -15,7 +17,7 @@ import kotlinx.coroutines.launch
 import java.util.UUID
 
 class ChatViewModel(
-    private val client: WebSocketBridgeClient = WebSocketBridgeClient()
+    private val client: AgyClient = WebSocketBridgeClient()
 ) : ViewModel() {
 
     private val _messages = MutableStateFlow<List<ChatMessage>>(
@@ -39,20 +41,22 @@ class ChatViewModel(
     private var activeAssistantMsgId: String? = null
 
     init {
-        // Inicia conexão inicial
-        client.connect()
+        // Inicia inicialização/conexão do cliente
+        viewModelScope.launch {
+            client.start()
+        }
 
         viewModelScope.launch {
-            client.messages.collect { msg ->
-                handleBridgeMessage(msg)
+            client.incomingEvents.collect { event ->
+                handleBridgeEvent(event)
             }
         }
     }
 
-    private fun handleBridgeMessage(msg: com.example.antigravity.data.model.BridgeMessage) {
-        when (msg.type) {
-            "output" -> {
-                val rawChunk = msg.chunk ?: ""
+    private fun handleBridgeEvent(event: BridgeEvent) {
+        when (event) {
+            is BridgeEvent.Output -> {
+                val rawChunk = event.chunk
                 if (rawChunk.isEmpty()) return
 
                 _rawTerminalLogs.update { it + rawChunk }
@@ -76,11 +80,29 @@ class ChatViewModel(
                     }
                 }
             }
-            "turn_complete" -> {
+            is BridgeEvent.TurnComplete -> {
                 finishActiveStreaming()
             }
-            "status" -> {
-                if (msg.state == "idle") {
+            is BridgeEvent.Status -> {
+                if (event.state == AGYState.IDLE) {
+                    finishActiveStreaming()
+                }
+            }
+            is BridgeEvent.Error -> {
+                val targetId = activeAssistantMsgId
+                if (targetId != null) {
+                    _messages.update { currentList ->
+                        currentList.map { message ->
+                            if (message.id == targetId) {
+                                message.copy(
+                                    content = (message.content + "\n⚠️ Erro: ${event.message}").trimStart(),
+                                    isStreaming = false
+                                )
+                            } else message
+                        }
+                    }
+                    activeAssistantMsgId = null
+                } else {
                     finishActiveStreaming()
                 }
             }
@@ -117,35 +139,40 @@ class ChatViewModel(
         _messages.update { it + userMsg + assistantMsg }
         _inputText.value = ""
 
-        // 3. Envia para a ponte do Termux
-        val sent = client.sendPrompt(text)
-        if (!sent) {
-            _messages.update { currentList ->
-                currentList.map { message ->
-                    if (message.id == assistantMsgId) {
-                        message.copy(
-                            content = "⚠️ Falha ao enviar para o Termux. Verifique se a ponte está em execução.",
-                            isStreaming = false
-                        )
-                    } else message
+        // 3. Envia para o cliente Antigravity
+        viewModelScope.launch {
+            val sent = client.sendPrompt(text)
+            if (!sent) {
+                _messages.update { currentList ->
+                    currentList.map { message ->
+                        if (message.id == assistantMsgId) {
+                            message.copy(
+                                content = "⚠️ Falha ao enviar para o Antigravity. Verifique se o serviço está em execução.",
+                                isStreaming = false
+                            )
+                        } else message
+                    }
                 }
+                activeAssistantMsgId = null
             }
-            activeAssistantMsgId = null
         }
     }
 
     fun sendInterrupt() {
-        client.sendInterrupt()
+        viewModelScope.launch {
+            client.interrupt()
+        }
         finishActiveStreaming()
     }
 
     fun reconnect() {
-        client.connect()
+        viewModelScope.launch {
+            client.start()
+        }
     }
 
     fun updateServerUrl(newUrl: String) {
-        client.disconnect()
-        client.connect(newUrl)
+        (client as? WebSocketBridgeClient)?.updateServerUrl(newUrl)
     }
 
     fun clearRawLogs() {
@@ -171,6 +198,8 @@ class ChatViewModel(
 
     override fun onCleared() {
         super.onCleared()
-        client.disconnect()
+        viewModelScope.launch {
+            client.stop()
+        }
     }
 }
