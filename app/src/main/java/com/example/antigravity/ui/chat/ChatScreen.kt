@@ -1,5 +1,6 @@
 package com.example.antigravity.ui.chat
 
+import android.content.Context
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.imePadding
@@ -17,9 +18,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.antigravity.data.client.DefaultAgyClientFactory
 import com.example.antigravity.data.model.AGYState
 import com.example.antigravity.data.model.ConnectionState
+import com.example.antigravity.data.settings.SettingsRepository
+import com.example.antigravity.data.workspace.WorkspaceManager
 import com.example.antigravity.ui.chat.components.ChatBubble
 import com.example.antigravity.ui.chat.components.ChatInputBar
 import com.example.antigravity.ui.chat.components.RawTerminalDialog
@@ -28,11 +35,33 @@ import com.example.antigravity.ui.chat.components.StatusHeader
 
 @Composable
 fun ChatScreen(
-    viewModel: ChatViewModel = viewModel(),
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: ChatViewModel = run {
+        val context = LocalContext.current
+        viewModel(
+            factory = remember {
+                object : ViewModelProvider.Factory {
+                    @Suppress("UNCHECKED_CAST")
+                    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                        val prefs = context.getSharedPreferences("antigravity_settings", Context.MODE_PRIVATE)
+                        val settingsRepo = SettingsRepository(prefs)
+                        val workspaceMgr = WorkspaceManager(context.filesDir)
+                        val factory = DefaultAgyClientFactory(context, settingsRepo, workspaceMgr)
+                        return ChatViewModel(
+                            clientFactory = factory,
+                            settingsRepository = settingsRepo,
+                            workspaceManager = workspaceMgr
+                        ) as T
+                    }
+                }
+            }
+        )
+    }
 ) {
     val messages by viewModel.messages.collectAsState()
     val status by viewModel.status.collectAsState()
+    val clientMode by viewModel.clientMode.collectAsState()
+    val workspacePath by viewModel.workspacePath.collectAsState()
     val inputText by viewModel.inputText.collectAsState()
     val rawTerminalLogs by viewModel.rawTerminalLogs.collectAsState()
 
@@ -53,6 +82,7 @@ fun ChatScreen(
         topBar = {
             StatusHeader(
                 status = status,
+                clientMode = clientMode,
                 onOpenSettings = { showSettingsDialog = true },
                 onOpenRawTerminal = {
                     selectedRawLogs = rawTerminalLogs
@@ -96,10 +126,18 @@ fun ChatScreen(
 
     if (showSettingsDialog) {
         SettingsDialog(
+            currentMode = clientMode,
             currentUrl = status.serverUrl,
+            currentWorkspace = workspacePath,
             onDismiss = { showSettingsDialog = false },
-            onSaveUrl = { newUrl ->
-                viewModel.updateServerUrl(newUrl)
+            onSaveSettings = { newMode, newUrl, newWorkspace ->
+                if (newMode != clientMode) {
+                    viewModel.switchClientMode(newMode)
+                }
+                if (newUrl.isNotBlank() && newUrl != status.serverUrl) {
+                    viewModel.updateServerUrl(newUrl)
+                }
+                viewModel.updateWorkspacePath(newWorkspace.ifBlank { null })
                 showSettingsDialog = false
             }
         )

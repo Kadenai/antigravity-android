@@ -36,11 +36,13 @@ import androidx.compose.ui.unit.sp
 import com.example.antigravity.data.model.AGYState
 import com.example.antigravity.data.model.BridgeStatus
 import com.example.antigravity.data.model.ConnectionState
+import com.example.antigravity.data.settings.ClientMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatusHeader(
     status: BridgeStatus,
+    clientMode: ClientMode = ClientMode.NATIVE,
     onOpenSettings: () -> Unit,
     onOpenRawTerminal: () -> Unit,
     onReconnect: () -> Unit,
@@ -55,6 +57,7 @@ fun StatusHeader(
                 )
                 ConnectionStatusChip(
                     status = status,
+                    clientMode = clientMode,
                     onReconnect = onReconnect
                 )
             }
@@ -83,20 +86,27 @@ fun StatusHeader(
 @Composable
 fun ConnectionStatusChip(
     status: BridgeStatus,
+    clientMode: ClientMode = ClientMode.NATIVE,
     onReconnect: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val (dotColor, text) = when (status.connectionState) {
         ConnectionState.CONNECTED -> {
             if (status.agyState == AGYState.RUNNING) {
-                Color(0xFFFFB703) to "Antigravity em execução..."
+                Color(0xFFFFB703) to if (clientMode == ClientMode.NATIVE) "Nativo em execução..." else "Antigravity em execução..."
             } else {
-                Color(0xFF2EC4B6) to "Conectado ao Termux"
+                Color(0xFF2EC4B6) to if (clientMode == ClientMode.NATIVE) "Nativo Standalone (Pronto)" else "Conectado ao Termux"
             }
         }
-        ConnectionState.CONNECTING -> Color(0xFFFFB703) to "Conectando..."
-        ConnectionState.DISCONNECTED -> Color(0xFFE63946) to "Desconectado (toque p/ reconectar)"
-        ConnectionState.ERROR -> Color(0xFFE63946) to "Erro (toque p/ reconectar)"
+        ConnectionState.CONNECTING -> {
+            Color(0xFFFFB703) to if (clientMode == ClientMode.NATIVE) "Iniciando processo..." else "Conectando ao Termux..."
+        }
+        ConnectionState.DISCONNECTED -> {
+            Color(0xFFE63946) to if (clientMode == ClientMode.NATIVE) "Nativo parado (toque p/ iniciar)" else "Desconectado (toque p/ reconectar)"
+        }
+        ConnectionState.ERROR -> {
+            Color(0xFFE63946) to if (clientMode == ClientMode.NATIVE) "Erro no processo nativo" else "Erro (toque p/ reconectar)"
+        }
     }
 
     Row(
