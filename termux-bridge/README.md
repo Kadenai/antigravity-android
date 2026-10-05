@@ -7,11 +7,10 @@ Este script conecta o seu aplicativo Android nativo ao **Antigravity CLI** execu
 ## 🚀 Como Usar no Termux
 
 ### 1. Pré-requisitos no Termux
-No Termux do seu celular Android, certifique-se de ter o Python e a biblioteca `websockets`:
+No Termux do seu celular Android, certifique-se de ter apenas o Python instalado (zero dependências externas necessárias):
 
 ```bash
 pkg update && pkg install python -y
-pip install websockets
 ```
 
 ### 2. Executar a Ponte

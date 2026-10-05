@@ -13,25 +13,31 @@ Em vez de forçar o usuário a lidar com terminais em tela pequena (falta de for
 
 ## 🏗️ Arquitetura
 
+O aplicativo suporta uma arquitetura modular baseada na interface `AgyClient`, desacoplando a camada de UI do motor de execução (Termux Bridge remoto ou Subprocesso Nativo Standalone):
+
 ```
-┌───────────────────────────────────────────────┐
-│              Dispositivo Android              │
-│                                               │
-│  ┌─────────────────────────────────────────┐  │
-│  │   App Antigravity (Jetpack Compose)     │  │
-│  │   - UI de Chat / Markdown               │  │
-│  │   - ChatViewModel                       │  │
-│  │   - WebSocketBridgeClient (OkHttp)      │  │
-│  └───────────────────▲─────────────────────┘  │
-│                      │ ws://127.0.0.1:8765    │
-│                      │ (JSON Protocol)        │
-│  ┌───────────────────▼─────────────────────┐  │
-│  │   Termux Environment                    │  │
-│  │   - agy_bridge.py (Python stdlib)       │  │
-│  │   - antigravity --accept-edits          │  │
-│  └─────────────────────────────────────────┘  │
-└───────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                 Antigravity Android (APK)                   │
+│                                                             │
+│  ┌───────────────────────────────────────────────────────┐  │
+│  │   UI Layer (Jetpack Compose / Material 3)             │  │
+│  │   - ChatScreen, ChatBubble, ChatInputBar              │  │
+│  │   - MarkdownContent, StatusHeader, SettingsDialog     │  │
+│  └───────────────────────────▲───────────────────────────┘  │
+│                              │ StateFlow / Actions          │
+│  ┌───────────────────────────▼───────────────────────────┐  │
+│  │   ChatViewModel                                       │  │
+│  └───────────────────────────▲───────────────────────────┘  │
+│                              │ SharedFlow<BridgeEvent>      │
+│  ┌───────────────────────────▼───────────────────────────┐  │
+│  │   AgyClient (Interface Unificada)                     │  │
+│  │   ├── WebSocketBridgeClient (Termux / PC Remoto)      │  │
+│  │   └── NativeAgyClient (ProcessBuilder Standalone)     │  │
+│  └───────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
 ```
+
+A especificação completa da arquitetura nativa standalone está documentada em [docs/superpowers/specs/2026-10-05-native-standalone-architecture-design.md](docs/superpowers/specs/2026-10-05-native-standalone-architecture-design.md).
 
 ---
 
@@ -88,12 +94,15 @@ Sempre execute os testes e valide a compilação antes de finalizar qualquer alt
 ## 🧩 Componentes Principais
 
 ### Frontend Android (`app/src/main/java/com/example/antigravity/`)
+- **`data/client/AgyClient.kt`**: Interface unificada de ciclo de vida (`start`, `sendPrompt`, `interrupt`, `stop`) para qualquer motor AGY.
+- **`data/client/BridgeEvent.kt`**: Definições seladas de eventos (`Output`, `Status`, `TurnComplete`, `Error`).
+- **`data/network/WebSocketBridgeClient.kt`**: Implementação de `AgyClient` via WebSocket RFC 6455 com reconexão resiliente.
+- **`data/network/AnsiCleaner.kt`**: Remove sequências CSI, OSC e trata caracteres de retorno de carro (`\r`) típicos de spinners de terminal.
+- **`ui/chat/ChatViewModel.kt`**: Acumulador de estado, gerenciador do ciclo de streaming das mensagens e desacoplado via `AgyClient`.
 - **`ui/chat/ChatScreen.kt`**: Tela raiz com `Scaffold`, lista de mensagens com auto-scroll reativo, cabeçalho e campo de entrada.
-- **`ui/chat/ChatViewModel.kt`**: Acumulador de estado, gerenciador do ciclo de streaming das mensagens e conexão WebSocket.
 - **`ui/chat/components/MarkdownContent.kt`**: Parser de Markdown leve que renderiza cabeçalhos, marcadores, formatação inline e blocos de código com botão de cópia de um toque.
 - **`ui/chat/components/ChatBubble.kt`**: Balões com distinção visual entre usuário e IA, indicador pulsante durante o streaming e atalho para ver a saída crua do terminal.
 - **`ui/chat/components/ChatInputBar.kt`**: Entrada de texto com botão contextual: **Enviar** (quando ocioso) ou **Parar** (quando o AGY estiver trabalhando).
-- **`data/network/AnsiCleaner.kt`**: Remove sequências CSI, OSC e trata caracteres de retorno de carro (`\r`) típicos de spinners de terminal.
 
 ### Backend Bridge (`termux-bridge/`)
 - **`agy_bridge.py`**:

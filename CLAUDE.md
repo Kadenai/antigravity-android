@@ -10,8 +10,11 @@ O **Antigravity Android** é um frontend nativo Android em **Jetpack Compose (Ma
 
 ### Arquitetura de Comunicação
 - **Frontend (Android App):** UI moderna de chat, suporte a Markdown, destaque de sintaxe em código, controle de fluxo (envio de prompt, interrupção via SIGINT) e visualizador de saída do terminal.
+- **Camada de Cliente Unificada (`data/client/AgyClient.kt`):** Interface assíncrona que abstrai o motor de execução, suportando:
+  1. **WebSocketBridgeClient:** Conexão remota com o Termux (`ws://127.0.0.1:8765`) ou PC via OkHttp.
+  2. **NativeAgyClient:** Execução nativa standalone via `ProcessBuilder` (em andamento conforme a especificação em `docs/superpowers/specs/2026-10-05-native-standalone-architecture-design.md`).
 - **Backend / Bridge (`termux-bridge/agy_bridge.py`):** Servidor WebSocket local (`ws://127.0.0.1:8765`) com **zero dependências externas** (apenas biblioteca padrão Python: `asyncio`, `hashlib`, `struct`).
-- **Agente CLI:** Executado no Termux através do comando:
+- **Agente CLI:** Executado no Termux ou nativamente através do comando:
   ```bash
   antigravity --accept-edits
   ```
@@ -54,16 +57,19 @@ Antigravity Android/
 │   │       ├── MainActivity.kt               # Entrypoint da Activity com edge-to-edge
 │   │       ├── Navigation.kt                 # Navegação principal exibindo ChatScreen
 │   │       ├── data/
+│   │       │   ├── client/
+│   │       │   │   ├── AgyClient.kt          # Interface unificada para motor nativo ou WebSocket
+│   │       │   │   └── BridgeEvent.kt        # Eventos selados de streaming (Output, Status, TurnComplete)
 │   │       │   ├── model/
 │   │       │   │   ├── ChatMessage.kt        # Modelo de mensagem do chat e logs brutos
 │   │       │   │   ├── BridgeStatus.kt       # Estados de conexão e do processo AGY
 │   │       │   │   └── Protocol.kt           # DTOs serializáveis do protocolo WebSocket
 │   │       │   └── network/
-│   │       │       ├── WebSocketBridgeClient.kt # Cliente OkHttp WebSocket com auto-reconnect
+│   │       │       ├── WebSocketBridgeClient.kt # Implementação AgyClient com OkHttp e auto-reconnect
 │   │       │       └── AnsiCleaner.kt        # Sanitizador de sequências de escape ANSI e spinners
 │   │       ├── ui/chat/
 │   │       │   ├── ChatScreen.kt             # Tela principal de chat
-│   │       │   ├── ChatViewModel.kt          # Gerenciamento de estado, streaming e I/O
+│   │       │   ├── ChatViewModel.kt          # Gerenciamento de estado, streaming e I/O via AgyClient
 │   │       │   └── components/
 │   │       │       ├── ChatBubble.kt         # Balões de mensagem com indicador pulsante
 │   │       │       ├── ChatInputBar.kt       # Caixa de texto com botões Enviar / Parar (SIGINT)
@@ -73,7 +79,11 @@ Antigravity Android/
 │   │       │       └── SettingsDialog.kt     # Diálogo de configuração de host/porta
 │   │       └── theme/                        # Tema Material 3 (Color, Theme, Type)
 │   └── src/test/java/com/example/antigravity/
-│       └── AnsiCleanerTest.kt                # Testes unitários do sanitizador ANSI
+│       ├── AnsiCleanerTest.kt                # Testes unitários do sanitizador ANSI
+│       └── ui/chat/
+│           └── ChatViewModelTest.kt          # Testes unitários do ViewModel com FakeAgyClient
+├── docs/superpowers/specs/
+│   └── 2026-10-05-native-standalone-architecture-design.md # Especificação do motor nativo
 ├── termux-bridge/
 │   ├── agy_bridge.py                         # Ponte WebSocket zero-deps em Python para Termux
 │   └── README.md                             # Instruções de execução no Termux
