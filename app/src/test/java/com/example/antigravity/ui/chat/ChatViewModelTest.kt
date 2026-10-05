@@ -173,6 +173,32 @@ class ChatViewModelTest {
 
         assertEquals(2, fakeClient.startCallCount)
     }
+
+    @Test
+    fun switchClientMode_stopsPreviousClientAndStartsNewClient() = runTest(testDispatcher) {
+        val client1 = FakeAgyClient()
+        val client2 = FakeAgyClient()
+        val factory = object : com.example.antigravity.data.client.AgyClientFactory {
+            override fun createClient(mode: com.example.antigravity.data.settings.ClientMode): AgyClient {
+                return if (mode == com.example.antigravity.data.settings.ClientMode.NATIVE) client1 else client2
+            }
+        }
+
+        val viewModel = ChatViewModel(
+            initialClient = client1,
+            clientFactory = factory
+        )
+        advanceUntilIdle()
+
+        assertEquals(1, client1.startCallCount)
+
+        viewModel.switchClientMode(com.example.antigravity.data.settings.ClientMode.REMOTE)
+        advanceUntilIdle()
+
+        assertEquals(1, client1.stopCallCount)
+        assertEquals(1, client2.startCallCount)
+        assertEquals(com.example.antigravity.data.settings.ClientMode.REMOTE, viewModel.clientMode.value)
+    }
 }
 
 private class FakeAgyClient : AgyClient {

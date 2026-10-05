@@ -3,12 +3,17 @@ package com.example.antigravity.ui.chat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.antigravity.data.client.AgyClient
+import com.example.antigravity.data.client.AgyClientFactory
 import com.example.antigravity.data.client.BridgeEvent
 import com.example.antigravity.data.model.AGYState
 import com.example.antigravity.data.model.BridgeStatus
 import com.example.antigravity.data.model.ChatMessage
 import com.example.antigravity.data.network.AnsiCleaner
 import com.example.antigravity.data.network.WebSocketBridgeClient
+import com.example.antigravity.data.settings.ClientMode
+import com.example.antigravity.data.settings.SettingsRepository
+import com.example.antigravity.data.workspace.WorkspaceManager
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,20 +22,38 @@ import kotlinx.coroutines.launch
 import java.util.UUID
 
 class ChatViewModel(
-    private val client: AgyClient = WebSocketBridgeClient()
+    initialClient: AgyClient? = null,
+    private val clientFactory: AgyClientFactory? = null,
+    private val settingsRepository: SettingsRepository? = null,
+    private val workspaceManager: WorkspaceManager? = null
 ) : ViewModel() {
+
+    private val _clientMode = MutableStateFlow(
+        settingsRepository?.getMode() ?: ClientMode.NATIVE
+    )
+    val clientMode: StateFlow<ClientMode> = _clientMode.asStateFlow()
+
+    private val _workspacePath = MutableStateFlow(
+        workspaceManager?.getWorkspacePath() ?: ""
+    )
+    val workspacePath: StateFlow<String> = _workspacePath.asStateFlow()
 
     private val _messages = MutableStateFlow<List<ChatMessage>>(
         listOf(
             ChatMessage(
-                content = "👋 **Bem-vindo ao Antigravity Android!**\n\nConecte-se à ponte no Termux para começar. Execute `python agy_bridge.py` no seu Termux.",
+                content = if ((settingsRepository?.getMode() ?: ClientMode.NATIVE) == ClientMode.NATIVE) {
+                    "👋 **Bem-vindo ao Antigravity Android!**\n\nModo Nativo Standalone ativo. O Antigravity CLI executará diretamente no seu dispositivo."
+                } else {
+                    "👋 **Bem-vindo ao Antigravity Android!**\n\nConecte-se à ponte no Termux para começar. Execute `python agy_bridge.py` no seu Termux."
+                },
                 isUser = false
             )
         )
     )
     val messages: StateFlow<List<ChatMessage>> = _messages.asStateFlow()
 
-    val status: StateFlow<BridgeStatus> = client.status
+    private val _status = MutableStateFlow(BridgeStatus())
+    val status: StateFlow<BridgeStatus> = _status.asStateFlow()
 
     private val _inputText = MutableStateFlow("")
     val inputText: StateFlow<String> = _inputText.asStateFlow()
@@ -38,19 +61,58 @@ class ChatViewModel(
     private val _rawTerminalLogs = MutableStateFlow("")
     val rawTerminalLogs: StateFlow<String> = _rawTerminalLogs.asStateFlow()
 
+    private var activeClient: AgyClient? = null
+    private var statusJob: Job? = null
+    private var eventsJob: Job? = null
     private var activeAssistantMsgId: String? = null
 
     init {
-        // Inicia inicialização/conexão do cliente
+        val client = initialClient
+            ?: clientFactory?.createClient(_clientMode.value)
+            ?: WebSocketBridgeClient()
+
+        activeClient = client
+        attachClient(client)
+
         viewModelScope.launch {
             client.start()
         }
+    }
 
-        viewModelScope.launch {
+    private fun attachClient(client: AgyClient) {
+        statusJob?.cancel()
+        eventsJob?.cancel()
+
+        statusJob = viewModelScope.launch {
+            client.status.collect { newStatus ->
+                _status.value = newStatus
+            }
+        }
+
+        eventsJob = viewModelScope.launch {
             client.incomingEvents.collect { event ->
                 handleBridgeEvent(event)
             }
         }
+    }
+
+    fun switchClientMode(mode: ClientMode) {
+        _clientMode.value = mode
+        settingsRepository?.setMode(mode)
+
+        viewModelScope.launch {
+            activeClient?.stop()
+            val newClient = clientFactory?.createClient(mode) ?: WebSocketBridgeClient()
+            activeClient = newClient
+            attachClient(newClient)
+            newClient.start()
+        }
+    }
+
+    fun updateWorkspacePath(path: String?) {
+        workspaceManager?.setCustomWorkspacePath(path)
+        settingsRepository?.setWorkspacePath(path)
+        _workspacePath.value = workspaceManager?.getWorkspacePath() ?: (path ?: "")
     }
 
     private fun handleBridgeEvent(event: BridgeEvent) {
@@ -117,16 +179,13 @@ class ChatViewModel(
         val text = _inputText.value.trim()
         if (text.isEmpty()) return
 
-        // Finaliza qualquer mensagem anterior se ainda estiver em streaming
         finishActiveStreaming()
 
-        // 1. Adiciona mensagem do usuário
         val userMsg = ChatMessage(
             content = text,
             isUser = true
         )
 
-        // 2. Cria mensagem vazia de resposta do assistente com indicador de streaming
         val assistantMsgId = UUID.randomUUID().toString()
         val assistantMsg = ChatMessage(
             id = assistantMsgId,
@@ -139,7 +198,7 @@ class ChatViewModel(
         _messages.update { it + userMsg + assistantMsg }
         _inputText.value = ""
 
-        // 3. Envia para o cliente Antigravity
+        val client = activeClient ?: return
         viewModelScope.launch {
             val sent = client.sendPrompt(text)
             if (!sent) {
@@ -159,20 +218,23 @@ class ChatViewModel(
     }
 
     fun sendInterrupt() {
+        val client = activeClient
         viewModelScope.launch {
-            client.interrupt()
+            client?.interrupt()
         }
         finishActiveStreaming()
     }
 
     fun reconnect() {
+        val client = activeClient
         viewModelScope.launch {
-            client.start()
+            client?.start()
         }
     }
 
     fun updateServerUrl(newUrl: String) {
-        (client as? WebSocketBridgeClient)?.updateServerUrl(newUrl)
+        settingsRepository?.setServerUrl(newUrl)
+        (activeClient as? WebSocketBridgeClient)?.updateServerUrl(newUrl)
     }
 
     fun clearRawLogs() {
@@ -198,8 +260,11 @@ class ChatViewModel(
 
     override fun onCleared() {
         super.onCleared()
+        statusJob?.cancel()
+        eventsJob?.cancel()
+        val client = activeClient
         viewModelScope.launch {
-            client.stop()
+            client?.stop()
         }
     }
 }

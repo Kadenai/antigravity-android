@@ -30,6 +30,7 @@ import okhttp3.WebSocketListener
 import java.util.concurrent.TimeUnit
 
 class WebSocketBridgeClient(
+    private var currentUrl: String = "ws://127.0.0.1:8765",
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO)
 ) : AgyClient {
     private val client = OkHttpClient.Builder()
@@ -43,7 +44,6 @@ class WebSocketBridgeClient(
     }
 
     private var webSocket: WebSocket? = null
-    private var currentUrl = "ws://127.0.0.1:8765"
     private var reconnectJob: Job? = null
     private var isIntentionalDisconnect = false
 
