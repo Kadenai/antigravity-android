@@ -96,13 +96,20 @@ Sempre execute os testes e valide a compilação antes de finalizar qualquer alt
 ### Frontend Android (`app/src/main/java/com/example/antigravity/`)
 - **`data/client/AgyClient.kt`**: Interface unificada de ciclo de vida (`start`, `sendPrompt`, `interrupt`, `stop`) para qualquer motor AGY.
 - **`data/client/BridgeEvent.kt`**: Definições seladas de eventos (`Output`, `Status`, `TurnComplete`, `Error`).
+- **`data/client/ProcessRunner.kt`**: Abstrações para processos (`AgyProcess`, `ProcessRunner`).
+- **`data/client/NativeAgyClient.kt`**: Motor de execução nativo standalone (`ProcessBuilder`, `SIGINT`, I/O streaming assíncrono).
+- **`data/client/AgyClientFactory.kt`**: Factory dinâmica de clientes de acordo com o `ClientMode` (Nativo vs Remoto).
 - **`data/network/WebSocketBridgeClient.kt`**: Implementação de `AgyClient` via WebSocket RFC 6455 com reconexão resiliente.
 - **`data/network/AnsiCleaner.kt`**: Remove sequências CSI, OSC e trata caracteres de retorno de carro (`\r`) típicos de spinners de terminal.
-- **`ui/chat/ChatViewModel.kt`**: Acumulador de estado, gerenciador do ciclo de streaming das mensagens e desacoplado via `AgyClient`.
+- **`data/workspace/WorkspaceManager.kt`**: Gerenciador de diretório de trabalho (workspace padrão interno `context.filesDir/workspace` e customizado).
+- **`data/settings/SettingsRepository.kt`**: Gerenciador de preferências do app (Modo Nativo/Remoto, URL, Workspace).
+- **`ui/chat/ChatViewModel.kt`**: Acumulador de estado, gerenciador do ciclo de streaming das mensagens, alternância dinâmica de modo e desacoplado via `AgyClient`.
 - **`ui/chat/ChatScreen.kt`**: Tela raiz com `Scaffold`, lista de mensagens com auto-scroll reativo, cabeçalho e campo de entrada.
 - **`ui/chat/components/MarkdownContent.kt`**: Parser de Markdown leve que renderiza cabeçalhos, marcadores, formatação inline e blocos de código com botão de cópia de um toque.
 - **`ui/chat/components/ChatBubble.kt`**: Balões com distinção visual entre usuário e IA, indicador pulsante durante o streaming e atalho para ver a saída crua do terminal.
 - **`ui/chat/components/ChatInputBar.kt`**: Entrada de texto com botão contextual: **Enviar** (quando ocioso) ou **Parar** (quando o AGY estiver trabalhando).
+- **`ui/chat/components/SettingsDialog.kt`**: Diálogo para escolha de Modo de Execução (Nativo Standalone vs Remoto Termux), URL e caminho do Workspace.
+- **`ui/chat/components/StatusHeader.kt`**: Barra superior com status dinâmico de acordo com o modo ativo.
 
 ### Backend Bridge (`termux-bridge/`)
 - **`agy_bridge.py`**:

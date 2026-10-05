@@ -59,14 +59,21 @@ Antigravity Android/
 │   │       ├── data/
 │   │       │   ├── client/
 │   │       │   │   ├── AgyClient.kt          # Interface unificada para motor nativo ou WebSocket
-│   │       │   │   └── BridgeEvent.kt        # Eventos selados de streaming (Output, Status, TurnComplete)
+│   │       │   │   ├── BridgeEvent.kt        # Eventos selados de streaming (Output, Status, TurnComplete)
+│   │       │   │   ├── ProcessRunner.kt      # Abstrações de processo (AgyProcess, ProcessRunner)
+│   │       │   │   ├── NativeAgyClient.kt    # Motor standalone nativo via ProcessBuilder
+│   │       │   │   └── AgyClientFactory.kt   # Fábrica dinâmica de clientes (Nativo / Remoto)
 │   │       │   ├── model/
 │   │       │   │   ├── ChatMessage.kt        # Modelo de mensagem do chat e logs brutos
 │   │       │   │   ├── BridgeStatus.kt       # Estados de conexão e do processo AGY
 │   │       │   │   └── Protocol.kt           # DTOs serializáveis do protocolo WebSocket
-│   │       │   └── network/
-│   │       │       ├── WebSocketBridgeClient.kt # Implementação AgyClient com OkHttp e auto-reconnect
-│   │       │       └── AnsiCleaner.kt        # Sanitizador de sequências de escape ANSI e spinners
+│   │       │   ├── network/
+│   │       │   │   ├── WebSocketBridgeClient.kt # Implementação AgyClient com OkHttp e auto-reconnect
+│   │       │   │   └── AnsiCleaner.kt        # Sanitizador de sequências de escape ANSI e spinners
+│   │       │   ├── settings/
+│   │       │   │   └── SettingsRepository.kt # Persistência de preferências (modo, URL, workspace)
+│   │       │   └── workspace/
+│   │       │       └── WorkspaceManager.kt   # Gestão de diretórios de projetos (workspace)
 │   │       ├── ui/chat/
 │   │       │   ├── ChatScreen.kt             # Tela principal de chat
 │   │       │   ├── ChatViewModel.kt          # Gerenciamento de estado, streaming e I/O via AgyClient
@@ -80,6 +87,10 @@ Antigravity Android/
 │   │       └── theme/                        # Tema Material 3 (Color, Theme, Type)
 │   └── src/test/java/com/example/antigravity/
 │       ├── AnsiCleanerTest.kt                # Testes unitários do sanitizador ANSI
+│       ├── data/
+│       │   ├── client/NativeAgyClientTest.kt # Testes unitários do motor nativo
+│       │   ├── settings/SettingsRepositoryTest.kt # Testes de persistência de configurações
+│       │   └── workspace/WorkspaceManagerTest.kt  # Testes do gerenciador de workspace
 │       └── ui/chat/
 │           └── ChatViewModelTest.kt          # Testes unitários do ViewModel com FakeAgyClient
 ├── docs/superpowers/specs/

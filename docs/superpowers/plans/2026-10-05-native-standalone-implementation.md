@@ -40,21 +40,21 @@
 - Consumes: Existing Android build configuration
 - Produces: Native library extraction setting `extractNativeLibs="true"` and `ndk.abiFilters` configuration
 
-- [ ] **Step 1: Check build script compatibility**
+- [x] **Step 1: Check build script compatibility**
 
 Verify that `app/build.gradle.kts` can declare `ndk.abiFilters` without syntax errors.
 
-- [ ] **Step 2: Update AndroidManifest.xml and build.gradle.kts**
+- [x] **Step 2: Update AndroidManifest.xml and build.gradle.kts**
 
 Add `android:extractNativeLibs="true"` to `<application>` in `app/src/main/AndroidManifest.xml`.
 In `app/build.gradle.kts`, inside `android.defaultConfig`, add ABI filters configuration and create `app/src/main/jniLibs/arm64-v8a/.gitkeep`.
 
-- [ ] **Step 3: Run build validation**
+- [x] **Step 3: Run build validation**
 
 Run: `.\gradlew.bat testDebugUnitTest`
 Expected: `BUILD SUCCESSFUL`
 
-- [ ] **Step 4: Commit build configuration**
+- [x] **Step 4: Commit build configuration**
 
 ```bash
 git add app/build.gradle.kts app/src/main/AndroidManifest.xml app/src/main/jniLibs/arm64-v8a/.gitkeep
@@ -77,7 +77,7 @@ git commit -m "build: configure native library extraction and arm64 jniLibs dire
   - `fun getWorkspacePath(): String`
   - `fun ensureWorkspaceReady(): Boolean`
 
-- [ ] **Step 1: Write the failing unit tests for WorkspaceManager**
+- [x] **Step 1: Write the failing unit tests for WorkspaceManager**
 
 Create `app/src/test/java/com/example/antigravity/data/workspace/WorkspaceManagerTest.kt`:
 
@@ -141,12 +141,12 @@ class WorkspaceManagerTest {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `.\gradlew.bat testDebugUnitTest --tests com.example.antigravity.data.workspace.WorkspaceManagerTest`
 Expected: FAIL with compilation error: `Unresolved reference: workspace`
 
-- [ ] **Step 3: Implement WorkspaceManager**
+- [x] **Step 3: Implement WorkspaceManager**
 
 Create `app/src/main/java/com/example/antigravity/data/workspace/WorkspaceManager.kt`:
 
@@ -207,12 +207,12 @@ class WorkspaceManager(
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `.\gradlew.bat testDebugUnitTest --tests com.example.antigravity.data.workspace.WorkspaceManagerTest`
 Expected: PASS
 
-- [ ] **Step 5: Commit WorkspaceManager**
+- [x] **Step 5: Commit WorkspaceManager**
 
 ```bash
 git add app/src/main/java/com/example/antigravity/data/workspace/WorkspaceManager.kt app/src/test/java/com/example/antigravity/data/workspace/WorkspaceManagerTest.kt
@@ -236,7 +236,7 @@ git commit -m "feat(workspace): implement WorkspaceManager with default and cust
   - `interrupt(): Boolean`
   - `stop()`
 
-- [ ] **Step 1: Create ProcessRunner and AgyProcess interfaces**
+- [x] **Step 1: Create ProcessRunner and AgyProcess interfaces**
 
 Create `app/src/main/java/com/example/antigravity/data/client/ProcessRunner.kt`:
 
@@ -267,7 +267,7 @@ interface ProcessRunner {
 }
 ```
 
-- [ ] **Step 2: Write the failing unit tests for NativeAgyClient**
+- [x] **Step 2: Write the failing unit tests for NativeAgyClient**
 
 Create `app/src/test/java/com/example/antigravity/data/client/NativeAgyClientTest.kt`:
 
@@ -482,12 +482,12 @@ class NativeAgyClientTest {
 }
 ```
 
-- [ ] **Step 3: Run test to verify it fails**
+- [x] **Step 3: Run test to verify it fails**
 
 Run: `.\gradlew.bat testDebugUnitTest --tests com.example.antigravity.data.client.NativeAgyClientTest`
 Expected: FAIL with compilation error: `Unresolved reference: NativeAgyClient`
 
-- [ ] **Step 4: Implement NativeAgyClient and DefaultProcessRunner**
+- [x] **Step 4: Implement NativeAgyClient and DefaultProcessRunner**
 
 Create `app/src/main/java/com/example/antigravity/data/client/NativeAgyClient.kt`:
 
@@ -500,12 +500,12 @@ Implement `NativeAgyClient` adhering to `AgyClient` with:
 - Sending SIGINT (signal 2) on interrupt
 - Proper cleanup on `stop()`
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `.\gradlew.bat testDebugUnitTest --tests com.example.antigravity.data.client.NativeAgyClientTest`
 Expected: PASS
 
-- [ ] **Step 6: Commit NativeAgyClient**
+- [x] **Step 6: Commit NativeAgyClient**
 
 ```bash
 git add app/src/main/java/com/example/antigravity/data/client/ProcessRunner.kt app/src/main/java/com/example/antigravity/data/client/NativeAgyClient.kt app/src/test/java/com/example/antigravity/data/client/NativeAgyClientTest.kt
@@ -530,27 +530,27 @@ git commit -m "feat(client): implement NativeAgyClient and ProcessRunner for sta
   - `fun getWorkspacePath(): String?`
   - `fun setWorkspacePath(path: String?)`
 
-- [ ] **Step 1: Write failing unit test for SettingsRepository**
+- [x] **Step 1: Write failing unit test for SettingsRepository**
 
 Create `app/src/test/java/com/example/antigravity/data/settings/SettingsRepositoryTest.kt` with a fake in-memory `SharedPreferences` implementation.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `.\gradlew.bat testDebugUnitTest --tests com.example.antigravity.data.settings.SettingsRepositoryTest`
 Expected: FAIL
 
-- [ ] **Step 3: Implement ClientMode and SettingsRepository**
+- [x] **Step 3: Implement ClientMode and SettingsRepository**
 
 Create `app/src/main/java/com/example/antigravity/data/settings/SettingsRepository.kt`:
 - Define `enum class ClientMode { NATIVE, REMOTE }`
 - Implement `SettingsRepository` with getters/setters for mode, URL, workspace path with sensible defaults (`NATIVE`, `ws://127.0.0.1:8765`, null).
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `.\gradlew.bat testDebugUnitTest --tests com.example.antigravity.data.settings.SettingsRepositoryTest`
 Expected: PASS
 
-- [ ] **Step 5: Commit SettingsRepository**
+- [x] **Step 5: Commit SettingsRepository**
 
 ```bash
 git add app/src/main/java/com/example/antigravity/data/settings/SettingsRepository.kt app/src/test/java/com/example/antigravity/data/settings/SettingsRepositoryTest.kt
@@ -573,19 +573,19 @@ git commit -m "feat(settings): add ClientMode and SettingsRepository for mode an
   - `ChatViewModel.switchClientMode(mode: ClientMode)`
   - `ChatViewModel.updateWorkspacePath(path: String)`
 
-- [ ] **Step 1: Write test in ChatViewModelTest for client switching and mode awareness**
+- [x] **Step 1: Write test in ChatViewModelTest for client switching and mode awareness**
 
 Add unit tests in `ChatViewModelTest.kt` verifying:
 - ViewModel initializes with provided client.
 - ViewModel can switch to a new client smoothly when mode changes.
 - Welcome message appropriately reflects native mode vs remote mode.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `.\gradlew.bat testDebugUnitTest --tests com.example.antigravity.ui.chat.ChatViewModelTest`
 Expected: FAIL
 
-- [ ] **Step 3: Implement AgyClientFactory and update ChatViewModel**
+- [x] **Step 3: Implement AgyClientFactory and update ChatViewModel**
 
 Create `AgyClientFactory.kt`.
 Update `ChatViewModel.kt` to:
@@ -593,12 +593,12 @@ Update `ChatViewModel.kt` to:
 - Provide `switchMode(mode: ClientMode)`.
 - Provide `updateWorkspace(path: String)`.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `.\gradlew.bat testDebugUnitTest --tests com.example.antigravity.ui.chat.ChatViewModelTest`
 Expected: PASS
 
-- [ ] **Step 5: Commit client factory and ViewModel integration**
+- [x] **Step 5: Commit client factory and ViewModel integration**
 
 ```bash
 git add app/src/main/java/com/example/antigravity/data/client/AgyClientFactory.kt app/src/main/java/com/example/antigravity/ui/chat/ChatViewModel.kt app/src/test/java/com/example/antigravity/ui/chat/ChatViewModelTest.kt
@@ -620,7 +620,7 @@ git commit -m "feat(chat): integrate AgyClientFactory and dynamic client mode sw
   - Updated `SettingsDialog` with Mode radio buttons / tabs (Nativo Standalone vs Remoto Termux), Workspace Path input, and WebSocket URL input.
   - Updated `StatusHeader` indicating "Nativo Standalone" or "Termux Bridge" with respective status badge.
 
-- [ ] **Step 1: Update SettingsDialog component**
+- [x] **Step 1: Update SettingsDialog component**
 
 Enhance `SettingsDialog.kt`:
 - Add mode selector: `Nativo Local (Sem Termux)` vs `Remoto (Termux Bridge)`.
@@ -628,22 +628,22 @@ Enhance `SettingsDialog.kt`:
 - WebSocket URL field (enabled/visible when in Remote mode).
 - Pass callbacks for saving settings.
 
-- [ ] **Step 2: Update StatusHeader component**
+- [x] **Step 2: Update StatusHeader component**
 
 Enhance `StatusHeader.kt`:
 - Display mode chip ("Nativo" / "Remoto").
 - For native mode: Green = "Pronto (Nativo)", Yellow = "Executando...", Red = "Erro no binário".
 
-- [ ] **Step 3: Connect settings in ChatScreen.kt**
+- [x] **Step 3: Connect settings in ChatScreen.kt**
 
 Wire up the new settings dialog callbacks to ViewModel in `ChatScreen.kt`.
 
-- [ ] **Step 4: Verify compilation and tests**
+- [x] **Step 4: Verify compilation and tests**
 
 Run: `.\gradlew.bat testDebugUnitTest`
 Expected: `BUILD SUCCESSFUL`
 
-- [ ] **Step 5: Commit UI updates**
+- [x] **Step 5: Commit UI updates**
 
 ```bash
 git add app/src/main/java/com/example/antigravity/ui/chat/components/SettingsDialog.kt app/src/main/java/com/example/antigravity/ui/chat/components/StatusHeader.kt app/src/main/java/com/example/antigravity/ui/chat/ChatScreen.kt
@@ -662,21 +662,21 @@ git commit -m "feat(ui): update SettingsDialog and StatusHeader with client mode
 - Consumes: All implemented components
 - Produces: Green test suite, compiled APK artifact, updated architecture documentation
 
-- [ ] **Step 1: Run all unit tests**
+- [x] **Step 1: Run all unit tests**
 
 Run: `.\gradlew.bat testDebugUnitTest`
 Expected: `BUILD SUCCESSFUL`, all unit tests passing.
 
-- [ ] **Step 2: Assemble Debug APK**
+- [x] **Step 2: Assemble Debug APK**
 
 Run: `.\gradlew.bat assembleDebug`
 Expected: `BUILD SUCCESSFUL`, output APK at `app/build/outputs/apk/debug/app-debug.apk`.
 
-- [ ] **Step 3: Update documentation in AGENTS.md and CLAUDE.md**
+- [x] **Step 3: Update documentation in AGENTS.md and CLAUDE.md**
 
 Update architecture diagrams, component inventory, and operational instructions to highlight the Standalone mode as primary with Termux as remote option.
 
-- [ ] **Step 4: Commit documentation and complete phase**
+- [x] **Step 4: Commit documentation and complete phase**
 
 ```bash
 git add AGENTS.md CLAUDE.md
