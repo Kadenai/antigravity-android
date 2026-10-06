@@ -86,3 +86,7 @@ Prior local verification passed 27 Android unit tests and 11 Python tests, plus 
 - [Termux RUN_COMMAND reference](https://github.com/termux/termux-app/wiki/RUN_COMMAND-Intent)
 
 Older proposals in `docs/superpowers/` are archived historical documents, partly in Portuguese. They have been superseded by the terminal bridge architecture and are not current implementation instructions.
+
+## License
+
+This project's source code is available under the [MIT License](LICENSE). AGY, Termux and other third-party components retain their own licenses and terms.
