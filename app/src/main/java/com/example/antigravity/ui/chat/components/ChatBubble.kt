@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -23,6 +24,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.IconButton
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -35,15 +38,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.antigravity.R
 import com.example.antigravity.data.model.ChatMessage
 
 @Composable
 fun ChatBubble(
     message: ChatMessage,
     onViewRawLogs: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onEdit: (() -> Unit)? = null
 ) {
     val isUser = message.isUser
 
@@ -60,14 +66,13 @@ fun ChatBubble(
                 modifier = Modifier
                     .size(32.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.SmartToy,
+                Image(
+                    painter = painterResource(id = R.drawable.ic_antigravity_logo),
                     contentDescription = "Antigravity",
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(24.dp)
                 )
             }
             Spacer(modifier = Modifier.width(8.dp))
@@ -89,12 +94,20 @@ fun ChatBubble(
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
                 if (isUser) {
+                    if (message.files.isNotEmpty()) {
+                        FileReferences(message.files)
+                        Spacer(Modifier.height(6.dp))
+                    }
                     Text(
                         text = message.content,
                         color = MaterialTheme.colorScheme.onPrimary,
                         fontSize = 15.sp,
                         lineHeight = 21.sp
                     )
+                    if (onEdit != null) IconButton(onClick = onEdit, modifier = Modifier.align(Alignment.End)) {
+                        Icon(Icons.Default.Edit, contentDescription = "Editar mensagem", tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(18.dp))
+                    }
                 } else {
                     if (message.content.isEmpty() && message.isStreaming) {
                         Row(verticalAlignment = Alignment.CenterVertically) {

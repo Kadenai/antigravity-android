@@ -13,3 +13,10 @@
 .externalNativeBuild
 .cxx
 local.properties
+__pycache__/
+*.pyc
+.kotlin/
+*.jks
+*.keystore
+.env
+.env.*

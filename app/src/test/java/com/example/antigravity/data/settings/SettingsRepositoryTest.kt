@@ -2,7 +2,8 @@ package com.example.antigravity.data.settings
 
 import android.content.SharedPreferences
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -18,38 +19,43 @@ class SettingsRepositoryTest {
     }
 
     @Test
-    fun defaultSettings_returnsNativeModeAndDefaultUrl() {
-        assertEquals(ClientMode.NATIVE, repository.getMode())
+    fun defaultSettings_returnsLocalBridgeUrl() {
         assertEquals("ws://127.0.0.1:8765", repository.getServerUrl())
-        assertNull(repository.getWorkspacePath())
     }
 
     @Test
-    fun setMode_updatesAndPersistsMode() {
-        repository.setMode(ClientMode.REMOTE)
-        assertEquals(ClientMode.REMOTE, repository.getMode())
-
-        // Ensure newly instantiated repository reads from the same preferences
-        val newRepo = SettingsRepository(fakePrefs)
-        assertEquals(ClientMode.REMOTE, newRepo.getMode())
+    fun invalidSavedUrl_fallsBackToLocalBridge() {
+        fakePrefs.edit().putString("key_server_url", "local://native").apply()
+        assertEquals(SettingsRepository.DEFAULT_SERVER_URL, repository.getServerUrl())
     }
 
     @Test
     fun setServerUrl_updatesAndPersistsUrl() {
-        repository.setServerUrl("ws://192.168.1.100:8765")
-        assertEquals("ws://192.168.1.100:8765", repository.getServerUrl())
+        repository.setServerUrl("  ws://127.0.0.1:9000  ")
+        assertEquals("ws://127.0.0.1:9000", repository.getServerUrl())
 
         val newRepo = SettingsRepository(fakePrefs)
-        assertEquals("ws://192.168.1.100:8765", newRepo.getServerUrl())
+        assertEquals("ws://127.0.0.1:9000", newRepo.getServerUrl())
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun invalidUrl_isRejected() {
+        repository.setServerUrl("http://localhost")
     }
 
     @Test
-    fun setWorkspacePath_updatesAndPersistsPath() {
-        repository.setWorkspacePath("/custom/workspace")
-        assertEquals("/custom/workspace", repository.getWorkspacePath())
-
-        val newRepo = SettingsRepository(fakePrefs)
-        assertEquals("/custom/workspace", newRepo.getWorkspacePath())
+    fun terminalSettings_persistExplicitModeAndWorkspaces() {
+        assertFalse(repository.getTerminalSettings().automatic)
+        assertFalse(repository.getTerminalSettings().autoStart)
+        val settings = TerminalSettings(autoStart = true, automatic = true, workspace = "~/projetos/α",
+            workspaces = listOf("/storage/emulated/0/Projects", "~/projetos/α"))
+        repository.saveTerminalSettings(settings)
+        assertEquals(settings, SettingsRepository(fakePrefs).getTerminalSettings())
+        assertFalse(SettingsRepository.isValidWorkspace("content://documents/tree/primary"))
+        assertFalse(SettingsRepository.isValidWorkspace("relative/path"))
+        assertTrue(SettingsRepository.isValidWorkspace("/storage/emulated/0/Meu Projeto"))
+        assertFalse(SettingsRepository.isValidServerUrl("ws://192.168.1.100:8765"))
+        assertFalse(SettingsRepository.isValidServerUrl("ws://127.0.0.1:8765#fragment"))
     }
 }
 

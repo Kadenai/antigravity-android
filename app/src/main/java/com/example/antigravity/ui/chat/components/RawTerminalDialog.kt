@@ -80,7 +80,7 @@ fun RawTerminalDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Saída do Terminal (Termux)",
+                        text = "Saída do terminal",
                         color = Color(0xFFCDD6F4),
                         fontFamily = FontFamily.Monospace,
                         fontSize = 14.sp
@@ -135,7 +135,7 @@ fun RawTerminalDialog(
                         .horizontalScroll(horizontalScroll)
                 ) {
                     Text(
-                        text = if (logs.isNotEmpty()) logs else "Nenhuma saída recebida do terminal ainda.\nInicie a ponte no Termux e envie uma mensagem.",
+                        text = if (logs.isNotEmpty()) logs else "Nenhuma saída recebida ainda.\nInicie a ponte no terminal e envie uma mensagem.",
                         color = if (logs.isNotEmpty()) Color(0xFFA6E3A1) else Color(0xFF6C7086),
                         fontFamily = FontFamily.Monospace,
                         fontSize = 12.sp,

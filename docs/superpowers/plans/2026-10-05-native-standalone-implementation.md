@@ -1,3 +1,7 @@
+> HISTÓRICO: proposta substituída em 2026-10-05. O aplicativo é um frontend do AGY no terminal Android por uma ponte local. Consulte AGENTS.md e README.md.
+
+> Status: arquivado. A integração automática com o Termux está implementada no APK 1.1.0 e aguarda [validação em Android com AGY real](../../PROXIMOS-PASSOS.md). As tarefas abaixo são históricas, incluindo marcações de conclusão; não descrevem a implementação vigente e não devem ser executadas como o próximo plano.
+
 # Native Standalone Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

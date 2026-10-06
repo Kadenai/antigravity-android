@@ -1,54 +1,63 @@
 package com.example.antigravity.data.settings
 
 import android.content.SharedPreferences
+import androidx.core.content.edit
+import java.net.URI
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
-enum class ClientMode {
-    NATIVE,
-    REMOTE
-}
+@Serializable
+data class TerminalSettings(
+    val serverUrl: String = SettingsRepository.DEFAULT_SERVER_URL,
+    val autoStart: Boolean = false,
+    val automatic: Boolean = false,
+    val workspace: String = "",
+    val workspaces: List<String> = emptyList()
+)
 
 class SettingsRepository(
     private val preferences: SharedPreferences
 ) {
     companion object {
-        private const val KEY_CLIENT_MODE = "key_client_mode"
         private const val KEY_SERVER_URL = "key_server_url"
-        private const val KEY_WORKSPACE_PATH = "key_workspace_path"
 
         const val DEFAULT_SERVER_URL = "ws://127.0.0.1:8765"
-    }
 
-    fun getMode(): ClientMode {
-        val modeStr = preferences.getString(KEY_CLIENT_MODE, ClientMode.NATIVE.name)
-        return try {
-            ClientMode.valueOf(modeStr ?: ClientMode.NATIVE.name)
-        } catch (_: IllegalArgumentException) {
-            ClientMode.NATIVE
-        }
-    }
+        fun isValidServerUrl(url: String): Boolean = runCatching {
+            val uri = URI(url)
+            uri.scheme == "ws" && uri.host in listOf("127.0.0.1", "localhost", "[::1]", "::1") &&
+                uri.port in 1..65535 && uri.fragment == null && uri.userInfo == null &&
+                uri.query == null && (uri.path.isNullOrEmpty() || uri.path == "/")
+        }.getOrDefault(false)
 
-    fun setMode(mode: ClientMode) {
-        preferences.edit().putString(KEY_CLIENT_MODE, mode.name).apply()
+        fun isValidWorkspace(path: String): Boolean = (path.isEmpty() || path == "~" || path.startsWith("~/") || path.startsWith("/")) &&
+            '\u0000' !in path && '\n' !in path && '\r' !in path
     }
 
     fun getServerUrl(): String {
-        return preferences.getString(KEY_SERVER_URL, DEFAULT_SERVER_URL) ?: DEFAULT_SERVER_URL
+        return preferences.getString(KEY_SERVER_URL, DEFAULT_SERVER_URL)
+            ?.takeIf { isValidServerUrl(it) } ?: DEFAULT_SERVER_URL
     }
 
     fun setServerUrl(url: String) {
-        preferences.edit().putString(KEY_SERVER_URL, url.trim()).apply()
+        val trimmed = url.trim()
+        require(isValidServerUrl(trimmed)) { "Use uma ponte local ws://127.0.0.1:porta" }
+        preferences.edit { putString(KEY_SERVER_URL, trimmed) }
     }
 
-    fun getWorkspacePath(): String? {
-        val path = preferences.getString(KEY_WORKSPACE_PATH, null)
-        return if (path.isNullOrBlank()) null else path
+    fun getTerminalSettings(): TerminalSettings {
+        val stored = preferences.getString("terminal_settings", null)
+        val settings = runCatching { Json.decodeFromString<TerminalSettings>(stored ?: "{}") }.getOrDefault(TerminalSettings())
+        return settings.copy(serverUrl = getServerUrl(), workspace = settings.workspace.takeIf(::isValidWorkspace) ?: "",
+            workspaces = settings.workspaces.filter(::isValidWorkspace))
     }
 
-    fun setWorkspacePath(path: String?) {
-        if (path.isNullOrBlank()) {
-            preferences.edit().remove(KEY_WORKSPACE_PATH).apply()
-        } else {
-            preferences.edit().putString(KEY_WORKSPACE_PATH, path.trim()).apply()
-        }
+    fun saveTerminalSettings(settings: TerminalSettings) {
+        require(isValidWorkspace(settings.workspace)) { "Use um caminho absoluto ou ~/pasta do terminal" }
+        require(!settings.autoStart || settings.serverUrl == DEFAULT_SERVER_URL) { "Início pelo Termux usa ws://127.0.0.1:8765" }
+        setServerUrl(settings.serverUrl)
+        val saved = settings.copy(workspaces = (settings.workspaces + settings.workspace).filter { it.isNotBlank() }.distinct())
+        preferences.edit { putString("terminal_settings", Json.encodeToString(saved)) }
     }
 }

@@ -1,7 +1,11 @@
+> HISTÓRICO: proposta substituída em 2026-10-05. O aplicativo é um frontend do AGY no terminal Android por uma ponte local. Consulte AGENTS.md e README.md.
+
+> Implementação vigente: APK 1.1.0 com inicialização pelo Termux, ponte local e seleção de workspaces; [validação em Android com AGY real pendente](../../PROXIMOS-PASSOS.md). As afirmações sobre binário ARM64 e execução Standalone abaixo pertencem à proposta descartada, não são comprovação de suporte Android e não autorizam restaurar esse modo.
+
 # Especificação de Design: Arquitetura Nativa Standalone (Sem Dependência do Termux)
 
 **Data:** 2026-10-05  
-**Status:** Aprovado para Planejamento  
+**Status:** Arquivado; substituído pelo plano de integração automática com o terminal Android.
 **Componente:** Antigravity Android (`app/`)
 
 ---

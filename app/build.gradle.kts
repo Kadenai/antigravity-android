@@ -11,12 +11,8 @@ android {
         applicationId = "com.example.antigravity"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
-
-        ndk {
-            abiFilters += listOf("arm64-v8a", "x86_64")
-        }
+        versionCode = 5
+        versionName = "1.2.1"
     }
 
     buildTypes {
@@ -37,14 +33,19 @@ android {
     }
 
     packaging {
-      jniLibs {
-        useLegacyPackaging = true
-      }
       resources {
         excludes += "/META-INF/{AL2.0,LGPL2.1}"
       }
     }
 }
+
+// Uma única fonte Python para uso manual e instalação pelo Termux.
+val bridgeAssets = tasks.register<Copy>("bridgeAssets") {
+    from(rootProject.file("termux-bridge/agy_bridge.py"))
+    into(layout.buildDirectory.dir("generated/bridgeAssets"))
+}
+android.sourceSets.getByName("main").assets.directories.add(layout.buildDirectory.dir("generated/bridgeAssets").get().asFile.path)
+tasks.named("preBuild").configure { dependsOn(bridgeAssets) }
 
 kotlin {
     jvmToolchain(17)
